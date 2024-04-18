@@ -84,6 +84,12 @@ menu "ESP Thread Border Router Example"
         default False
         help
             If enabled, a web server will be provided to configure and query Thread network via a Web GUI. 
+    
+    config OPENTHREAD_BR_UI
+        bool 'Enable the UI for Thread Border Router.'
+        default False
+        help
+            Enable the UI for Thread Border Router.
 
     menu "External coexist wire type and pin config"
         config EXTERNAL_COEX_WIRE_TYPE

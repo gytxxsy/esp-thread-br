@@ -488,8 +488,8 @@ function http_server_thread_network_commissioner() {
                             Topology
 -------------------------------------------------------------------- */
 function ctrl_thread_network_topology(arg) {
-  var node_info;
-  var topology_info;
+  var node_info = undefined;
+  var topology_info = undefined;
   if (arg == "Running" || arg == "Suspend") {
 
     $.ajax({
@@ -502,6 +502,9 @@ function ctrl_thread_network_topology(arg) {
       success : function(msg) {
         console_show_response_result(msg);
         node_info = msg;
+        if (node_info != undefined && topology_info != undefined) {
+          handle_thread_networks_topology_package(node_info, topology_info);
+        }
       },
       error : function(msg) { console.log(msg) }
     })
@@ -515,7 +518,9 @@ function ctrl_thread_network_topology(arg) {
       success : function(msg) {
         console_show_response_result(msg);
         topology_info = msg;
-        handle_thread_networks_topology_package(node_info, topology_info);
+        if (node_info != undefined && topology_info != undefined) {
+          handle_thread_networks_topology_package(node_info, topology_info);
+        }
       },
       error : function(msg) { console.log(msg) }
     })

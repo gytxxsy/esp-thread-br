@@ -1,0 +1,13 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/mdns: "^1.0.0"
+  espressif/esp_ot_cli_extension: "~1.1.0"
+  espressif/esp_rcp_update: "~1.0.0"
+  espressif/esp-serial-flasher: "~0.0.0"
+  espressif/esp-box-3:
+    version: "1.*"
+    require: "no"
+  ## Required IDF version
+  idf:
+    version: ">=4.1.0"
+  # # Put list of dependencies here

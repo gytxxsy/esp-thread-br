@@ -37,6 +37,10 @@
 #include "openthread/tasklet.h"
 #include "openthread/thread_ftd.h"
 
+#if CONFIG_OPENTHREAD_BR_UI
+#include "ui_for_br.h"
+#endif
+
 #if CONFIG_OPENTHREAD_BR_AUTO_START
 #include "esp_wifi.h"
 #include "protocol_examples_common.h"
@@ -90,6 +94,50 @@ static void rcp_failure_handler(void)
     esp_rcp_reset();
 }
 
+#if CONFIG_OPENTHREAD_BR_UI
+static void config_box_worker(void *ctx)
+{
+    while (!flag_ui_ready) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    config_box();
+    vTaskDelete(NULL);
+}
+
+static void ot_epskc_change_callback(otChangedFlags changed_flags, void *ctx)
+{
+    static bool is_configed = false;
+    otInstance *instance = esp_openthread_get_instance();
+    otDeviceRole role = otThreadGetDeviceRole(instance);
+    if ((role == OT_DEVICE_ROLE_LEADER || role == OT_DEVICE_ROLE_ROUTER || role == OT_DEVICE_ROLE_CHILD) && (!is_configed)) {
+        xTaskCreate(config_box_worker, "config_box", 2048, NULL, 5, NULL);
+        is_configed = true;
+    }
+}
+
+esp_err_t esp_openthread_state_epskc_init(otInstance *instance)
+{
+    ESP_RETURN_ON_FALSE(otSetStateChangedCallback(instance, ot_epskc_change_callback, NULL) == OT_ERROR_NONE, ESP_FAIL,
+                        TAG, "Failed to install state change callback");
+    return ESP_OK;
+}
+
+static void set_ui_ip4_addr(void) {
+    esp_netif_t *netif = esp_openthread_get_backbone_netif();
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(netif, &ip_info);
+    sprintf((char *)s_wifi_ipv4_address, IPSTR, IP2STR(&ip_info.ip));
+    sprintf(s_br_web, "http://%s:80/index.html", s_wifi_ipv4_address);
+}
+
+static void border_router_box_init(void)
+{
+    set_ui_ip4_addr();
+    otBackboneRouterSetEnabled(esp_openthread_get_instance(), true);
+    ESP_ERROR_CHECK(esp_openthread_state_epskc_init(esp_openthread_get_instance()));
+}
+#endif
+
 static void ot_task_worker(void *ctx)
 {
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_OPENTHREAD();
@@ -127,6 +175,9 @@ static void ot_task_worker(void *ctx)
     esp_openthread_lock_acquire(portMAX_DELAY);
     esp_openthread_set_backbone_netif(get_example_netif());
     ESP_ERROR_CHECK(esp_openthread_border_router_init());
+#if CONFIG_OPENTHREAD_BR_UI
+    border_router_box_init();
+#endif
     otOperationalDatasetTlvs dataset;
     otError error = otDatasetGetActiveTlvs(esp_openthread_get_instance(), &dataset);
     ESP_ERROR_CHECK(esp_openthread_auto_start((error == OT_ERROR_NONE) ? &dataset : NULL));
@@ -150,5 +201,8 @@ void launch_openthread_border_router(const esp_openthread_platform_config_t *pla
 {
     s_openthread_platform_config = *platform_config;
     ESP_ERROR_CHECK(esp_rcp_update_init(update_config));
+#if CONFIG_OPENTHREAD_BR_UI
+    ESP_ERROR_CHECK(ui_for_br_start());
+#endif
     xTaskCreate(ot_task_worker, "ot_br_main", 6144, xTaskGetCurrentTaskHandle(), 5, NULL);
 }
