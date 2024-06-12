@@ -19,6 +19,10 @@ ESP32-S3-BOX-3B pin | ESP32-H2 pin
            G42      |      RST
            G40      |      BOOT(GPIO9)
 
+### IDF Required
+
+Please use this IDF version: https://github.com/gytxxsy/esp-idf/tree/demo/demo_for_ot_epskc.
+
 ### Configure the project
 
 ESP32-S3 is the SoC on ESP32-S3-BOX-3B, so set target to esp32s3:
