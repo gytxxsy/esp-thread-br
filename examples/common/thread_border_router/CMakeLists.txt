@@ -1,4 +1,4 @@
-set(requires esp_ot_cli_extension openthread protocol_examples_common vfs esp_wifi esp_eth esp-box-3)
+set(requires esp_ot_cli_extension openthread protocol_examples_common vfs esp_wifi esp_eth esp-box-3 console)
 set(src_dirs "src")
 set(include_dirs "include")
 

@@ -48,6 +48,8 @@ static void display_epskc_page(void);
 static char *eps_openthread_generate_epskc(void);
 static void erase_all_settings(void);
 
+lv_obj_t *border_router = NULL;
+lv_obj_t *booting = NULL;
 static void ui_after_boot(void)
 {
     // ESP logo
@@ -62,19 +64,42 @@ static void ui_after_boot(void)
     lv_obj_set_style_text_font(img_text, &lv_font_montserrat_28, LV_PART_MAIN);
     lv_obj_align_to(img_text, img_logo, LV_ALIGN_OUT_RIGHT_MID, 5, 0);
 
-    lv_obj_t *border_router = lv_label_create(lv_scr_act());         /*Add a label to the button*/
+    border_router = lv_label_create(lv_scr_act());         /*Add a label to the button*/
     lv_label_set_text(border_router, "Thread Border Router"); /*Set the labels text*/
     lv_obj_set_style_text_color(border_router, lv_color_black(), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(border_router, &lv_font_montserrat_26, LV_PART_MAIN);
     lv_obj_align(border_router, LV_ALIGN_CENTER, 0, 0);
 
 
-    lv_obj_t *booting = lv_label_create(lv_scr_act());         /*Add a label to the button*/
+    booting = lv_label_create(lv_scr_act());         /*Add a label to the button*/
     lv_label_set_text(booting, "starting up..."); /*Set the labels text*/
     lv_obj_set_style_text_color(booting, lv_color_black(), LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(booting, &lv_font_montserrat_16, LV_PART_MAIN);
     lv_obj_align_to(booting, border_router, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
     flag_ui_ready = true;
+}
+
+void ui_after_boot_but_wifi_fail(void)
+{
+    if (border_router && booting) {
+        lv_label_set_text(booting, "Invaild wifi"); /*Set the labels text*/
+        lv_obj_set_style_text_color(booting, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(booting, &lv_font_montserrat_16, LV_PART_MAIN);
+        lv_obj_align_to(booting, border_router, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+
+        lv_obj_t *wifi_warning = lv_label_create(lv_scr_act());
+        lv_label_set_text(wifi_warning, "open console, set a new one with:"); /*Set the labels text*/
+        lv_obj_set_style_text_color(wifi_warning, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(wifi_warning, &lv_font_montserrat_16, LV_PART_MAIN);
+        lv_obj_align_to(wifi_warning, booting, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+         
+
+        lv_obj_t *wifi_config_command = lv_label_create(lv_scr_act());
+        lv_label_set_text(wifi_config_command, "esp newwifi <ssid> <password>"); /*Set the labels text*/
+        lv_obj_set_style_text_color(wifi_config_command, lv_color_make(255, 0, 0), LV_STATE_DEFAULT);
+        lv_obj_set_style_text_font(wifi_config_command, &lv_font_montserrat_16, LV_PART_MAIN);
+        lv_obj_align_to(wifi_config_command, wifi_warning, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+    }
 }
 
 
@@ -236,7 +261,7 @@ static char *eps_openthread_generate_epskc(void)
     epskc_str[9] = '\0';
     esp_openthread_lock_acquire(portMAX_DELAY);
 
-    if (otBorderAgentSetEphemeralKey(esp_openthread_get_instance(), epskc_str, 100000, 49160) != OT_ERROR_NONE) {
+    if (otBorderAgentSetEphemeralKey(esp_openthread_get_instance(), epskc_str, CONFIG_OPENTHREAD_EPHEMERALKEY_LIFE_TIME * 1000, 49160) != OT_ERROR_NONE) {
         ESP_LOGE(TAG, "Fail to generate ephemeral key");
     }
     esp_openthread_lock_release();

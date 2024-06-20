@@ -6,6 +6,7 @@
  */
 
 #include "border_router_launch.h"
+#include "br_wifi_config.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -130,8 +131,11 @@ static void set_ui_ip4_addr(void) {
     sprintf(s_br_web, "http://%s:80/index.html", s_wifi_ipv4_address);
 }
 
-static void border_router_box_init(void)
+static void border_router_box_init(bool wifi_connected)
 {
+    if (!wifi_connected) {
+        ui_after_boot_but_wifi_fail();
+    }
     set_ui_ip4_addr();
     otBackboneRouterSetEnabled(esp_openthread_get_instance(), true);
     ESP_ERROR_CHECK(esp_openthread_state_epskc_init(esp_openthread_get_instance()));
@@ -168,7 +172,32 @@ static void ot_task_worker(void *ctx)
 #error No backbone netif!
 #endif
     esp_openthread_lock_release();
-    ESP_ERROR_CHECK(example_connect());
+
+    bool wifi_connected = false;
+    ESP_ERROR_CHECK(wifi_config_init());
+
+    char wifi_ssid[32];
+    char wifi_password[64];
+    if (wifi_config_get_ssid(wifi_ssid) != ESP_OK || wifi_config_get_password(wifi_password) != ESP_OK) {
+        ESP_LOGW(TAG, "set new wifi config with default config");
+        strcpy(wifi_ssid, CONFIG_EXAMPLE_WIFI_SSID);
+        strcpy(wifi_password, CONFIG_EXAMPLE_WIFI_PASSWORD);
+        if (wifi_config_set_ssid(wifi_ssid) != ESP_OK || wifi_config_set_password(wifi_password) != ESP_OK) {
+            ESP_LOGE(TAG, "Fail to save wifi ssid and password");
+            assert(0);
+        }
+    }
+    
+    if (example_connect_wifi(wifi_ssid, wifi_password) == ESP_OK) {
+        wifi_connected = true;
+    } else {
+        ESP_LOGE(TAG, "Invaild wifi ssid and password");
+        ESP_LOGE(TAG, "Please enter the new WiFi SSID and password after the console init");
+        ESP_LOGE(TAG, "Format: esp new wifi <ssid> <password>");
+        ESP_LOGE(TAG, "For example:");
+        ESP_LOGE(TAG, "esp newwifi OpenThreadDemo OpenThread");
+    }
+    
 #if CONFIG_EXAMPLE_CONNECT_WIFI
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 #endif
@@ -176,17 +205,21 @@ static void ot_task_worker(void *ctx)
     esp_openthread_set_backbone_netif(get_example_netif());
     ESP_ERROR_CHECK(esp_openthread_border_router_init());
 #if CONFIG_OPENTHREAD_BR_UI
-    border_router_box_init();
+    border_router_box_init(wifi_connected);
 #endif
-    otOperationalDatasetTlvs dataset;
-    otError error = otDatasetGetActiveTlvs(esp_openthread_get_instance(), &dataset);
-    ESP_ERROR_CHECK(esp_openthread_auto_start((error == OT_ERROR_NONE) ? &dataset : NULL));
+    if (wifi_connected) {
+        otOperationalDatasetTlvs dataset;
+        otError error = otDatasetGetActiveTlvs(esp_openthread_get_instance(), &dataset);
+        ESP_ERROR_CHECK(esp_openthread_auto_start((error == OT_ERROR_NONE) ? &dataset : NULL));
+    }
 #endif // CONFIG_OPENTHREAD_BR_AUTO_START
     esp_openthread_lock_release();
+    ESP_ERROR_CHECK(wifi_config_command_register());
 
     // Run the main loop
     esp_openthread_cli_create_task();
     esp_openthread_launch_mainloop();
+    
 
     // Clean up
     esp_netif_destroy(openthread_netif);

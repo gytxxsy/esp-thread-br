@@ -91,6 +91,12 @@ menu "ESP Thread Border Router Example"
         help
             Enable the UI for Thread Border Router.
 
+    config OPENTHREAD_EPHEMERALKEY_LIFE_TIME
+        int "The life time of openthread ephemeralkey"
+        default 100
+        help
+            Set the life time of openthread ephemeralkey.
+
     menu "External coexist wire type and pin config"
         config EXTERNAL_COEX_WIRE_TYPE
             int "The wire_type of external coexist"
